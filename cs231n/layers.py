@@ -184,7 +184,18 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # variance, storing your result in the running_mean and running_var   #
         # variables.                                                          #
         #######################################################################
-        pass
+        
+        batchMean = x.sum(axis = 0) / N
+        batchVar = np.sum((x - batchMean) ** 2, axis = 0) / N
+        
+        xNormalized = (x - batchMean) / np.sqrt(batchVar + eps)
+        
+        out = gamma.reshape(1, D) * xNormalized + beta.reshape(1, D)
+        cache = (gamma, beta, batchVar, eps, xNormalized)
+        
+        running_mean = momentum * running_mean + (1 - momentum) * batchMean.reshape((D, ))
+        running_var = momentum * running_var + (1 - momentum) * batchVar.reshape((D, ))
+        
         #######################################################################
         #                           END OF YOUR CODE                          #
         #######################################################################
@@ -195,7 +206,14 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         # then scale and shift the normalized data using gamma and beta.      #
         # Store the result in the out variable.                               #
         #######################################################################
-        pass
+        
+        xNormalized = (
+            (x - running_mean.reshape(1, D))
+            / np.sqrt(running_var.reshape(1, D) + eps)
+        )
+        
+        out = gamma.reshape(1, D) * xNormalized + beta.reshape(1, D)        
+        
         #######################################################################
         #                          END OF YOUR CODE                           #
         #######################################################################
@@ -231,7 +249,17 @@ def batchnorm_backward(dout, cache):
     # TODO: Implement the backward pass for batch normalization. Store the    #
     # results in the dx, dgamma, and dbeta variables.                         #
     ###########################################################################
-    pass
+    
+    D = dout.shape[1]
+    
+    gamma, beta, batchVar, eps, xNormalized = cache
+    
+    dbeta = dout * 1
+    dgamma = dout.transpose().dot(xNormalized).sum(axis = 0).reshape((D, ))
+    
+    dxNormalized = dout * gamma.reshape(1, D)
+    dx = dxNormalized / np.sqrt(batchVar + eps)
+    
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
