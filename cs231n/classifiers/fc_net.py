@@ -265,14 +265,20 @@ class FullyConnectedNet(object):
         
         # Forward pass through hidden layers
         cacheAffine = [None] * self.num_layers
-        cacheRelu = [None] * self.num_layers
-        
+
         if self.use_batchnorm:
             cacheBatchNorm = [None] * self.num_layers
         else:
-            catchBatchNorm = None        
+            catchBatchNorm = None                
         
-        xOut = X * 1
+        cacheRelu = [None] * self.num_layers
+        
+        if self.use_dropout:
+            cacheDropout = [None] * self.num_layers
+        else:
+            cacheDropout = None
+        
+        xOut = X.copy()
         
         for i in range(1, self.num_layers):
             strI = str(i)
@@ -296,7 +302,15 @@ class FullyConnectedNet(object):
             
             xOutRelu, cacheRelu[i] = relu_forward(xOutBatchNorm)
             
-            xOut = xOutRelu
+            if self.use_dropout:
+                xOutDropout, cacheDropout[i] = dropout_forward(
+                    xOutRelu,
+                    self.dropout_param
+                )
+            else:
+                xOutDropout = xOutRelu
+            
+            xOut = xOutDropout
             
         scores, cacheScore = affine_forward(
             xOut,
@@ -343,7 +357,12 @@ class FullyConnectedNet(object):
         for i in range(self.num_layers - 1, 0, -1):
             strI = str(i)
             
-            dxRelu = relu_backward(dx, cacheRelu[i])
+            if self.use_dropout:
+                dxDropout = dropout_backward(dx, cacheDropout[i])
+            else:
+                dxDropout = dx
+            
+            dxRelu = relu_backward(dxDropout, cacheRelu[i])
             
             gammaLayer = "gamma" + strI
             betaLayer = "beta" + strI
