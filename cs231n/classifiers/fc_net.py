@@ -201,9 +201,9 @@ class FullyConnectedNet(object):
             self.params["W" + strI] = weight_scale * np.random.randn(dims[i - 1], dims[i])
             self.params["b" + strI] = np.zeros(dims[i])
             
-            if self.use_batchnorm and i < lenDims - 2:
-                self.params["gamma" + strI] = 1
-                self.params["beta" + strI] = 0
+            if self.use_batchnorm and i <= lenDims - 2:
+                self.params["gamma" + strI] = np.ones((dims[i], ))
+                self.params["beta" + strI] = np.zeros((dims[i], ))
         
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -264,22 +264,42 @@ class FullyConnectedNet(object):
         ############################################################################
         
         # Forward pass through hidden layers
-        cacheAffineRelu = [None] * self.num_layers      
-        xOutAffineRelu = X
+        cacheAffine = [None] * self.num_layers
+        cacheRelu = [None] * self.num_layers
+        
+        if self.use_batchnorm:
+            cacheBatchNorm = [None] * self.num_layers
+        else:
+            catchBatchNorm = None        
+        
+        xOut = X * 1
         
         for i in range(1, self.num_layers):
             strI = str(i)
             
-            xOutTmp, cacheAffineRelu[i] = affine_relu_forward(
-                xOutAffineRelu,
+            xOutAffine, cacheAffine[i] = affine_forward(
+                xOut,
                 self.params["W" + strI],
                 self.params["b" + strI]
             )
             
-            xOutAffineRelu = xOutTmp
+            if self.use_batchnorm:            
+                xOutBatchNorm, cacheBatchNorm[i] = batchnorm_forward(
+                    xOutAffine,
+                    self.params["gamma" + strI],
+                    self.params["beta" + strI],
+                    self.bn_params[i - 1]
+                )                
+                
+            else:
+                xOutBatchNorm = xOutAffine
+            
+            xOutRelu, cacheRelu[i] = relu_forward(xOutBatchNorm)
+            
+            xOut = xOutRelu
             
         scores, cacheScore = affine_forward(
-            xOutAffineRelu,
+            xOut,
             self.params["W" + str(self.num_layers)],
             self.params["b" + str(self.num_layers)]
         )
@@ -321,18 +341,31 @@ class FullyConnectedNet(object):
         grads[WLayer] += self.reg * self.params[WLayer]
         
         for i in range(self.num_layers - 1, 0, -1):
-            WLayer = "W" + str(i)
-            bLayer = "b" + str(i)
+            strI = str(i)
             
-            dxTmp, grads[WLayer], grads[bLayer] = affine_relu_backward(
-                dx,
-                cacheAffineRelu[i]
+            dxRelu = relu_backward(dx, cacheRelu[i])
+            
+            gammaLayer = "gamma" + strI
+            betaLayer = "beta" + strI
+            
+            if self.use_batchnorm:
+                dxBatchNorm, grads[gammaLayer], grads[betaLayer] = (
+                    batchnorm_backward(dxRelu, cacheBatchNorm[i])
+                )
+            else:
+                dxBatchNorm = dxRelu
+                
+            WLayer = "W" + strI
+            bLayer = "b" + strI                
+                
+            dxAffine, grads[WLayer], grads[bLayer] = affine_backward(
+                dxBatchNorm, cacheAffine[i]
             )
             
             loss += 0.5 * self.reg * np.sum(self.params[WLayer] * self.params[WLayer])
             grads[WLayer] += self.reg * self.params[WLayer]
             
-            dx = dxTmp                
+            dx = dxAffine
         
         ############################################################################
         #                             END OF YOUR CODE                             #

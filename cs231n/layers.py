@@ -193,8 +193,14 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         out = gamma.reshape(1, D) * xNormalized + beta.reshape(1, D)
         cache = (gamma, batchVar, eps, xNormalized)
         
-        running_mean = momentum * running_mean + (1 - momentum) * batchMean.reshape((D, ))
-        running_var = momentum * running_var + (1 - momentum) * batchVar.reshape((D, ))
+        running_mean = (
+            momentum * running_mean
+            + (1 - momentum) * batchMean.reshape((D, ))
+        )
+        running_var = (
+            momentum * running_var
+            + (1 - momentum) * batchVar.reshape((D, ))
+        )
         
         #######################################################################
         #                           END OF YOUR CODE                          #
