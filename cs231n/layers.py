@@ -191,7 +191,7 @@ def batchnorm_forward(x, gamma, beta, bn_param):
         xNormalized = (x - batchMean) / np.sqrt(batchVar + eps)
         
         out = gamma.reshape(1, D) * xNormalized + beta.reshape(1, D)
-        cache = (gamma, beta, batchVar, eps, xNormalized)
+        cache = (gamma, batchVar, eps, xNormalized)
         
         running_mean = momentum * running_mean + (1 - momentum) * batchMean.reshape((D, ))
         running_var = momentum * running_var + (1 - momentum) * batchVar.reshape((D, ))
@@ -250,16 +250,34 @@ def batchnorm_backward(dout, cache):
     # results in the dx, dgamma, and dbeta variables.                         #
     ###########################################################################
     
-    D = dout.shape[1]
+    gamma, batchVar, eps, xNormalized = cache
+    N, D = dout.shape
     
-    gamma, beta, batchVar, eps, xNormalized = cache
+    # Calculate dbeta, dgamma
+    dbeta = dout.sum(axis = 0).reshape((D, ))
+    dgamma = (
+        xNormalized.transpose().dot(dout)[range(D), range(D)].reshape((D, ))
+    )
     
-    dbeta = dout * 1
-    dgamma = dout.transpose().dot(xNormalized).sum(axis = 0).reshape((D, ))
+    # Calculate dx
+    dxNormalized = dout * gamma
     
-    dxNormalized = dout * gamma.reshape(1, D)
-    dx = dxNormalized / np.sqrt(batchVar + eps)
+    alpha = np.sqrt((batchVar + eps).reshape((1, D)))
     
+    matAccum1 = (        
+        dxNormalized.sum(axis = 0).reshape((1, D))
+        / (-N * alpha)
+    )
+    matAccum2 = (        
+        (xNormalized * dxNormalized).sum(axis = 0).reshape((1, D))
+        / (N * alpha)
+    )
+
+    dx = (
+        matAccum1 - xNormalized * matAccum2
+        + (1 / alpha) * dxNormalized
+    )
+
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -289,7 +307,38 @@ def batchnorm_backward_alt(dout, cache):
     # should be able to compute gradients with respect to the inputs in a     #
     # single statement; our implementation fits on a single 80-character line.#
     ###########################################################################
-    pass
+    
+    # SAME implementation as batchnorm_backward
+    
+    gamma, batchVar, eps, xNormalized = cache
+    N, D = dout.shape
+    
+    # Calculate dbeta, dgamma
+    dbeta = dout.sum(axis = 0).reshape((D, ))
+    dgamma = (
+        xNormalized.transpose().dot(dout)[range(D), range(D)].reshape((D, ))
+    )   
+    
+    # Calculate dx
+    dxNormalized = dout * gamma
+    
+    alpha = np.sqrt((batchVar + eps).reshape((1, D)))
+    
+    matAccum1 = (        
+        dxNormalized.sum(axis = 0).reshape((1, D))
+        / (-N * alpha)
+    )
+    matAccum2 = (        
+        (xNormalized * dxNormalized).sum(axis = 0).reshape((1, D))
+        / (N * alpha)
+    )
+
+    dx = (
+        matAccum1 - xNormalized * matAccum2
+        + (1 / alpha) * dxNormalized
+    )
+    
+    
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
