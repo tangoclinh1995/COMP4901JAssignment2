@@ -461,8 +461,42 @@ def conv_forward_naive(x, w, b, conv_param):
     ###########################################################################
     # TODO: Implement the convolutional forward pass.                         #
     # Hint: you can use the function np.pad for padding.                      #
-    ###########################################################################
-    pass
+    ##########################################################################
+    
+    N, C, H, W = x.shape
+    F, _, HH, WW = w.shape
+    
+    pad = conv_param["pad"]
+    stride = conv_param["stride"]
+    
+    xPadded = np.pad(
+        x,
+        ((0, 0), (0, 0), (pad, pad), (pad, pad), ),
+        "constant",
+        constant_values = 0
+    )
+    
+    HOut = 1 + (H + 2 * pad - HH) // stride
+    WOut = 1 + (W + 2 * pad - WW) // stride
+    out = np.zeros((N, F, HOut, WOut, ))
+    
+    for hi in range(HOut):
+        hiBegin = hi * stride
+        hiEnd = hiBegin + HH
+        
+        for wi in range(WOut):
+            wiBegin = wi * stride
+            wiEnd = wiBegin + WW
+            
+            for fi in range(F):
+                out[:, fi, hi, wi] = (
+                    (
+                        xPadded[:, :, hiBegin:hiEnd, wiBegin:wiEnd]
+                        * w[fi]
+                    ).sum(axis = (1,2,3))
+                    + b[fi]
+                )
+    
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -487,7 +521,52 @@ def conv_backward_naive(dout, cache):
     ###########################################################################
     # TODO: Implement the convolutional backward pass.                        #
     ###########################################################################
-    pass
+    
+    x, w, b, conv_param = cache
+    
+    pad = conv_param["pad"]
+    stride = conv_param["stride"]
+    
+    N, C, H, W = x.shape
+    F, _, HH, WW = w.shape
+    _, _, HOut, WOut = dout.shape
+    
+    xPadded = np.pad(
+        x,
+        ((0, 0), (0, 0), (pad, pad), (pad, pad), ),
+        "constant",
+        constant_values = 0
+    )
+    
+    dxPadded = np.zeros_like(xPadded)
+    dw = np.zeros_like(w)
+    db = np.zeros_like(b)
+    
+    for hi in range(HOut):
+        hiBegin = hi * stride
+        hiEnd = hiBegin + HH
+        
+        for wi in range(WOut):
+            wiBegin = wi * stride
+            wiEnd = wiBegin + WW
+            
+            for fi in range(F):
+                dOutElement = dout[:, fi, hi, wi].reshape((N, 1, 1, 1, ))
+                
+                dxPadded[:, :, hiBegin:hiEnd, wiBegin:wiEnd] += (
+                    w[fi].reshape(1, C, HH, WW)
+                    * dOutElement
+                )
+                
+                dw[fi] += (
+                    xPadded[:, :, hiBegin:hiEnd, wiBegin:wiEnd]
+                    * dOutElement
+                ).sum(axis = 0)
+                
+                db[fi] += dOutElement.sum()
+    
+    dx = dxPadded[:, :, pad:(pad + H), pad:(pad + W)]
+    
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
