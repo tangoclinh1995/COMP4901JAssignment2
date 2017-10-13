@@ -592,7 +592,30 @@ def max_pool_forward_naive(x, pool_param):
     ###########################################################################
     # TODO: Implement the max pooling forward pass                            #
     ###########################################################################
-    pass
+    
+    N, C, H, W = x.shape
+    
+    poolHeight = pool_param["pool_height"]
+    poolWidth = pool_param["pool_width"]
+    stride = pool_param["stride"]
+        
+    HOut = 1 + (H - poolHeight) // stride
+    WOut = 1 + (W - poolWidth) // stride
+    
+    out = np.zeros((N, C, HOut, WOut, ))
+    
+    for hi in range(HOut):
+        hiBegin = hi * stride
+        hiEnd = hiBegin + poolHeight
+        
+        for wi in range(WOut):
+            wiBegin = wi * stride
+            wiEnd = wiBegin + poolWidth
+            
+            out[:, :, hi, wi] = (
+                np.amax(x[:, :, hiBegin:hiEnd, wiBegin:wiEnd], axis = (2, 3, ))
+            )
+    
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
@@ -615,7 +638,36 @@ def max_pool_backward_naive(dout, cache):
     ###########################################################################
     # TODO: Implement the max pooling backward pass                           #
     ###########################################################################
-    pass
+
+    x, pool_param = cache
+    
+    N, C, H, W = x.shape
+    
+    poolHeight = pool_param["pool_height"]
+    poolWidth = pool_param["pool_width"]
+    stride = pool_param["stride"]
+        
+    _, _, HOut, WOut = dout.shape
+    
+    dx = np.zeros((N, C, H, W, ))
+    
+    for hi in range(HOut):
+        hiBegin = hi * stride
+        hiEnd = hiBegin + poolHeight
+        
+        for wi in range(WOut):
+            wiBegin = wi * stride
+            wiEnd = wiBegin + poolWidth
+            
+            out = (
+                np.amax(x[:, :, hiBegin:hiEnd, wiBegin:wiEnd], axis = (2, 3, ))
+            ).reshape((N, C, 1, 1, ))
+            
+            dx[:, :, hiBegin:hiEnd, wiBegin:wiEnd] = (
+                dout[:, :, hi, wi].reshape((N, C, 1, 1, ))
+                * (x[:, :, hiBegin:hiEnd, wiBegin:wiEnd] == out)
+            )            
+    
     ###########################################################################
     #                             END OF YOUR CODE                            #
     ###########################################################################
