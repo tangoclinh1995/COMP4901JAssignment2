@@ -156,7 +156,7 @@ def adam(x, dx, config=None):
     epsilon = config["epsilon"]    
     m = config["m"]
     v = config["v"]    
-    t = config["t"]
+    t = config["t"] + 1
     
     m = beta1 * m + (1 - beta1) * dx
     v = beta2 * v + (1 - beta2) * dx * dx
@@ -168,7 +168,7 @@ def adam(x, dx, config=None):
     
     config["m"] = m
     config["v"] = v
-    config["t"] = t + 1
+    config["t"] = t
     
     ###########################################################################
     #                             END OF YOUR CODE                            #
