@@ -198,7 +198,14 @@ class FullyConnectedNet(object):
         
         for i in range(1, lenDims):
             strI = str(i)
-            self.params["W" + strI] = weight_scale * np.random.randn(dims[i - 1], dims[i])
+            
+            if weight_scale is None:
+                # Xavier Initialization
+                self.params["W" + strI] = np.random.randn(dims[i - 1], dims[i]) / np.sqrt(dims[i - 1] / 2)
+            else:
+                # Normal initialization            
+                self.params["W" + strI] = weight_scale * np.random.randn(dims[i - 1], dims[i])
+                
             self.params["b" + strI] = np.zeros(dims[i])
             
             if self.use_batchnorm and i <= lenDims - 2:

@@ -304,3 +304,87 @@ class Solver(object):
 
         # At the end of training swap the best params into the model
         self.model.params = self.best_params
+        
+
+        
+    def _step_alt(self, start_idx, end_idx):
+        X_batch = self.X_train[start_idx: end_idx, :]
+        y_batch = self.y_train[start_idx: end_idx]
+
+        loss, grads = self.model.loss(X_batch, y_batch)
+        self.loss_history.append(loss)
+
+        for p, w in self.model.params.items():
+            dw = grads[p]
+            config = self.optim_configs[p]
+            next_w, next_config = self.update_rule(w, dw, config)
+            self.model.params[p] = next_w
+            self.optim_configs[p] = next_config        
+
+        
+    def train_alt(self):
+        num_train = self.X_train.shape[0]
+        
+        total_iterations = self.num_epochs * int(np.ceil(num_train / self.batch_size))
+       
+        nIter = 0
+        for e in range(self.num_epochs):
+            self.epoch = e + 1
+            
+            nCorrect = 0
+            avgLoss = 0
+            
+            start_idx = 0
+            while start_idx < num_train:
+                end_idx = np.minimum(start_idx + self.batch_size, num_train)
+                   
+                self._step_alt(start_idx, end_idx)
+                
+                if self.verbose and nIter % self.print_every == 0:
+                    print("Iteration %d / %d: Loss = %f" % (
+                        nIter + 1, total_iterations, self.loss_history[-1]
+                    ))
+                
+                start_idx = end_idx
+                nIter += 1
+           
+            # At the end of every epoch, increment the epoch counter and decay the learning rate
+            for k in self.optim_configs:
+                self.optim_configs[k]["learning_rate"] *= self.lr_decay
+                
+            train_acc = self.check_accuracy(
+                self.X_train,
+                self.y_train,
+                num_samples = self.num_train_samples
+            )
+                
+            val_acc = self.check_accuracy(
+                self.X_val,
+                self.y_val,
+                num_samples = self.num_val_samples
+            )
+
+            self.train_acc_history.append(train_acc)
+            self.val_acc_history.append(val_acc)
+            self._save_checkpoint()
+
+            if self.verbose:
+                print("----")
+                print("Epoch %d / %d: Train Acc = %f, Val Acc = %f" % (
+                    self.epoch,
+                    self.num_epochs,
+                    train_acc, val_acc
+                ))
+
+            # Keep track of the best model
+            if val_acc > self.best_val_acc:
+                self.best_val_acc = val_acc
+                self.best_params = {}
+                
+                for k, v in self.model.params.items():
+                    self.best_params[k] = v.copy()
+
+        # At the end of training swap the best params into the model
+        self.model.params = self.best_params
+        
+        
