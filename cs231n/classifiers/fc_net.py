@@ -369,7 +369,7 @@ class FullyConnectedNet(object):
             
             if self.use_batchnorm:
                 dxBatchNorm, grads[gammaLayer], grads[betaLayer] = (
-                    batchnorm_backward(dxRelu, cacheBatchNorm[i])
+                    batchnorm_backward_alt(dxRelu, cacheBatchNorm[i])
                 )
             else:
                 dxBatchNorm = dxRelu
